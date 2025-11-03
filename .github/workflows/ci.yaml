@@ -39,34 +39,34 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
-steps:
-  # Step 1: Check out your code from GitHub
-  - name: Check out code
-    uses: actions/checkout@v4
+    steps:
+      # Step 1: Check out your code from GitHub
+      - name: Check out code
+        uses: actions/checkout@v4
 
-  # Step 2: Install Python (let's match your v3.13)
-  - name: Set up Python
-    uses: actions/setup-python@v5
-    with:
-      python-version: '3.13'
+      # Step 2: Install Python (let's match your v3.13)
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
 
-  # Step 3: Install all our libraries from requirements.txt
-  - name: Install dependencies
-    run: |
-      python -m pip install --upgrade pip
-      pip install -r requirements.txt
-    working-directory: ./jokes_api/src
+      # Step 3: Install all our libraries from requirements.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+        working-directory: ./jokes_api/src
 
-  # Step 4: Start our web server in the background
-  - name: Start the web server
-    run: uvicorn main:app --host 0.0.0.0 --port 8000 &
-    working-directory: ./jokes_api/src
+      # Step 4: Start our web server in the background
+      - name: Start the web server
+        run: uvicorn main:app --host 0.0.0.0 --port 8000 &
+        working-directory: ./jokes_api/src
 
-  # Step 5: Wait for the server to be ready
-  - name: Wait for server to be ready
-    run: sleep 10
+      # Step 5: Wait for the server to be ready
+      - name: Wait for server to be ready
+        run: sleep 10
 
-  # Step 6: Running the tests
-  - name: Run pytest
-    run: pytest -v
-    working-directory: ./jokes_api/src
+      # Step 6: Running the tests
+      - name: Run pytest
+        run: pytest -v
+        working-directory: ./jokes_api/src
