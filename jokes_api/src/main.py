@@ -101,8 +101,8 @@ def get_jokes():
             jokes = cursor.fetchall()
             return jokes
 
-@app.post("/jokes", status_code=201)
-def create_joke():
+
+def _fetch_and_store_joke(conn):
     """
     Fetches a random joke from an external API and stores it in the database.
     """
@@ -132,6 +132,51 @@ def create_joke():
                 "setup": setup,
                 "punchline": punchline
             }
+
+
+@app.post("/jokes", status_code=201)
+def create_joke():
+    """
+    Fetches and stores a single random joke.
+    """
+    with get_db_connection() as conn:
+        new_joke = _fetch_and_store_joke(conn)
+
+        # Now we commit the transaction
+        conn.commit()
+
+        return {
+            "message": "Joke stored successfully!",
+            "joke": new_joke
+        }
+
+
+@app.post("/jokes/collect", status_code=201)
+def collect_jokes(count: int = 10):
+    """
+    Collects a specified number of jokes.
+    """
+    if count < 1:
+        raise HTTPException(status_code=400, detail="Count must be 1 or greater.")
+
+    print(f"Collecting {count} jokes...")
+
+    new_jokes = []
+    with get_db_connection() as conn:
+        try:
+            for _ in range(count):
+                new_joke = _fetch_and_store_joke(conn)
+                new_jokes.append(new_joke)
+            conn.commit()
+
+        except HTTPException as e:
+            conn.rollback()
+            raise e
+
+    return {
+        "message": f"Successfully stored {count} jokes.",
+        "jokes_added": new_jokes
+    }
 
 
 @app.get("/")
