@@ -8,7 +8,6 @@ from contextlib import contextmanager, asynccontextmanager
 from dotenv import load_dotenv
 
 load_dotenv()
-app = FastAPI()
 
 # Loading the environment variables
 DB_HOST = os.getenv("DB_HOST")
@@ -66,6 +65,20 @@ def _run_startup_logic():
         print("FATAL: Could not connect to database on startup.")
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Manages the application startup and shutdown lifecycle.
+    """
+    await asyncio.to_thread(_run_startup_logic)
+    # Waiting to receive requests
+    yield
+    print("Running application shutdown logic...")
+
+
+app = FastAPI(lifespan=lifespan)
+
+
 @app.get("/health")
 def health_check():
     """
@@ -121,18 +134,6 @@ def create_joke():
             }
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """
-    Manages the application startup and shutdown lifecycle.
-    """
-    await asyncio.to_thread(_run_startup_logic)
-    # Waiting to receive requests
-    yield
-    print("Running application shutdown logic...")
-
 @app.get("/")
 def read_root():
     return {"message": "Hello, World! My Jokes API is running."}
-
-app = FastAPI(lifespan=lifespan)
