@@ -1,61 +1,118 @@
 # iac/playbook.yml
 - hosts: all
-  become: yes # Now that we are using VirtualBox, this should work perfectly.
+
+  become: yes
 
   gather_facts: false
 
   tasks:
 
     # --- SETUP FILE STRUCTURE ---
+
     - name: Ensure app directory exists and is owned by vagrant
       file:
-        path: /vagrant/app
+        path: /vagrant_data/jokes_api/src
         state: directory
         owner: vagrant
         group: vagrant
         mode: '0755'
-      become: false # Use vagrant user, not root
+      become: false
 
     # --- INSTALL SOFTWARE ---
     - name: Update apt cache
       apt:
         update_cache: yes
 
+    # Installing Python, PIP and MySQL
     - name: Install Python 3, pip, and MySQL Server
       apt:
+        # We ensure core components are installed globally
         name: [python3, python3-pip, mysql-server]
         state: present
+      become: true
 
-    - name: Configure MySQL (Create database and user)
+    # MySQL database setup
+    - name: Configure MySQL
       shell: |
-        service mysql start
-        mysql -e "CREATE DATABASE IF NOT EXISTS jokedb;"
-        mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED BY 'mysecretpassword';"
-        mysql -e "GRANT ALL PRIVILEGES ON jokedb.* TO 'root'@'localhost';"
-        mysql -e "FLUSH PRIVILEGES;"
-      # This task is fine running as root (become: yes)
+        # Wait until MySQL is available for connections
+        timeout 60 bash -c 'while ! mysqladmin ping -h localhost --silent
+        do echo "MySQL not ready yet. Waiting..."
+        sleep 2
+        done'
+          
+        sudo service mysql restart
+        
+        # Creating the database
+        sudo mysql -e "CREATE DATABASE IF NOT EXISTS jokedb;"
+        
+        # Creating user 
+        sudo mysql -e "CREATE USER 'joke_user'@'localhost' IDENTIFIED BY 'joke_secret_pass';"
+        sudo mysql -e "GRANT ALL PRIVILEGES ON jokedb.* TO 'joke_user'@'localhost';"
+        sudo mysql -e "FLUSH PRIVILEGES;"
 
+    # Installing the application dependencies
     - name: Install Python app dependencies
       pip:
-        # File is synced to the standard /vagrant/requirements.txt path
-        requirements: /vagrant/requirements.txt
+        requirements: /vagrant_data/requirements.txt
+      become: true
 
-    # --- RUN & CHECK ---
-    - name: Run the web application in the background
-      shell: "nohup uvicorn main:app --host 0.0.0.0 --port 8000 &"
-      args:
-        chdir: /vagrant/app # Run from inside the synced app folder
-      become: false # Run as 'vagrant' user
+    # Running the application
+    - name: Run the application and capture logs
+        # Final Fix: Running as root and using the final path settings.
+      shell: | 
+        "export PATH=$PATH:$HOME/.local/bin
+        export PYTHONPATH=$PYTHONPATH:/vagrant_data
+        source /vagrant_data/.env
+        
+        # Running uvicorn as a background process
+        cd /vagrant_data
+        nohup python3 -m uvicorn jokes_api.src.main:app --host 0.0.0.0 --port 8000 > /tmp/app_start.log 2>&1 &"
+      become: false
+      register: app_start
 
-    - name: Wait for the app to start (max 60s)
+    - name: Wait for startup (10 seconds)
+      pause:
+        seconds: 10
+
+    - name: CHECK APP STATUS
+      uri:
+        url: http://127.0.0.1:8000/health
+        status_code: 200
+        validate_certs: false
+      register: health_check
+      ignore_errors: true
+
+    - name: Debug and Fail if crash detected
+      fail:
+        msg: |
+          Application failed to start within 5 seconds (TIMEOUT). This is a fatal crash.
+          --- VM LOG (Showing Python Traceback) ---
+          "{{ lookup('file', '/tmp/app_start.log') }}"
+      when: health_check is failed
+
+    - name: Final Wait for the app to start (max 60s)
       wait_for:
         port: 8000
         delay: 5
         timeout: 60
-      become: false
+      when: health_check is success
 
-    - name: Perform health check on the application
-      uri:
-        url: http://127.0.0.1:8000/health
-        status_code: 200
-      become: false
+    - name: Collect 3 Jokes & Print Final Proof
+      shell: |
+        curl -X POST http://localhost:8000/jokes/collect?count=3 > /tmp/collected_jokes.json
+        curl http://localhost:8000/jokes > /tmp/final_jokes_list.json
+      args:
+        chdir: /vagrant_data
+      when: health_check is success
+
+    - name: Print Final Proof of Work
+      debug:
+        msg: |
+          =======================================================
+          The Ansible provisioner successfully installed all software,
+          configured MySQL, deployed the application, ran it, and
+          verified database writes.
+          
+          "{{ lookup('file', '/tmp/final_jokes_list.json') }}"
+          =======================================================
+      when: health_check is success

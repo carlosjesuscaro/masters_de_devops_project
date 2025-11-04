@@ -1,23 +1,23 @@
 # iac/Vagrantfile
 Vagrant.configure("2") do |config|
 
-  # 1. VM image - Using a generic Ubuntu box (built for VirtualBox)
+  # 1. VM image
   config.vm.box = "ubuntu/focal64"
 
   # 2. Network
   config.vm.network "forwarded_port", guest: 8000, host: 8000
 
-  # 3. Setting virtualbox as the provider
+  # 3. Explicitly tell Vagrant to use VirtualBox
   config.vm.provider "virtualbox" do |vb|
     vb.name = "JokeApp-DevVM"
     vb.memory = "2048"
     vb.cpus = "2"
   end
 
-  # 4. Syncing Folders
-  config.vm.synced_folder "../jokes_api/src", "/vagrant/app"
-#   config.vm.synced_folder "../requirements.txt", "/vagrant/requirements.txt"
-#   config.vm.synced_folder "../.env", "/vagrant/app/.env"
+  # 4. CRITICAL FIX: Only sync the root project folder
+  # This makes the entire project available inside the VM at /vagrant_data
+  # and avoids the permission errors caused by syncing individual files.
+  config.vm.synced_folder "../", "/vagrant_data"
 
   # 5. Defining ansible as the installer
   config.vm.provision "ansible" do |ansible|
