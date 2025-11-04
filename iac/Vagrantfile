@@ -1,18 +1,25 @@
+# iac/Vagrantfile
 Vagrant.configure("2") do |config|
 
-  # VM image
+  # 1. VM image - Using a generic Ubuntu box (built for VirtualBox)
   config.vm.box = "ubuntu/focal64"
 
-  # Network
+  # 2. Network
   config.vm.network "forwarded_port", guest: 8000, host: 8000
 
-  # Syncing the application folder
+  # 3. Setting virtualbox as the provider
+  config.vm.provider "virtualbox" do |vb|
+    vb.name = "JokeApp-DevVM"
+    vb.memory = "2048"
+    vb.cpus = "2"
+  end
+
+  # 4. Syncing Folders
   config.vm.synced_folder "../jokes_api/src", "/vagrant/app"
+#   config.vm.synced_folder "../requirements.txt", "/vagrant/requirements.txt"
+#   config.vm.synced_folder "../.env", "/vagrant/app/.env"
 
-  # Syncing requirements.txt
-  config.vm.synced_folder "../requirements.txt", "/vagrant/requirements.txt"
-
- # Defining ansible as the installer
+  # 5. Defining ansible as the installer
   config.vm.provision "ansible" do |ansible|
     ansible.playbook = "playbook.yml"
   end

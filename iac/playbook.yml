@@ -1,0 +1,61 @@
+# iac/playbook.yml
+- hosts: all
+  become: yes # Now that we are using VirtualBox, this should work perfectly.
+
+  gather_facts: false
+
+  tasks:
+
+    # --- SETUP FILE STRUCTURE ---
+    - name: Ensure app directory exists and is owned by vagrant
+      file:
+        path: /vagrant/app
+        state: directory
+        owner: vagrant
+        group: vagrant
+        mode: '0755'
+      become: false # Use vagrant user, not root
+
+    # --- INSTALL SOFTWARE ---
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install Python 3, pip, and MySQL Server
+      apt:
+        name: [python3, python3-pip, mysql-server]
+        state: present
+
+    - name: Configure MySQL (Create database and user)
+      shell: |
+        service mysql start
+        mysql -e "CREATE DATABASE IF NOT EXISTS jokedb;"
+        mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED BY 'mysecretpassword';"
+        mysql -e "GRANT ALL PRIVILEGES ON jokedb.* TO 'root'@'localhost';"
+        mysql -e "FLUSH PRIVILEGES;"
+      # This task is fine running as root (become: yes)
+
+    - name: Install Python app dependencies
+      pip:
+        # File is synced to the standard /vagrant/requirements.txt path
+        requirements: /vagrant/requirements.txt
+
+    # --- RUN & CHECK ---
+    - name: Run the web application in the background
+      shell: "nohup uvicorn main:app --host 0.0.0.0 --port 8000 &"
+      args:
+        chdir: /vagrant/app # Run from inside the synced app folder
+      become: false # Run as 'vagrant' user
+
+    - name: Wait for the app to start (max 60s)
+      wait_for:
+        port: 8000
+        delay: 5
+        timeout: 60
+      become: false
+
+    - name: Perform health check on the application
+      uri:
+        url: http://127.0.0.1:8000/health
+        status_code: 200
+      become: false
