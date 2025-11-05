@@ -60,15 +60,20 @@
     - name: Run the application and capture logs
         # Final Fix: Running as root and using the final path settings.
       shell: | 
-        "export PATH=$PATH:$HOME/.local/bin
+        export PATH=$PATH:$HOME/.local/bin
         export PYTHONPATH=$PYTHONPATH:/vagrant_data
         source /vagrant_data/.env
         
         # Running uvicorn as a background process
         cd /vagrant_data
-        nohup python3 -m uvicorn jokes_api.src.main:app --host 0.0.0.0 --port 8000 > /tmp/app_start.log 2>&1 &"
+        nohup python3 -m uvicorn jokes_api.src.main:app --host 0.0.0.0 --port 8000 > /tmp/app_start.log 2>&1 &
       become: false
       register: app_start
+      environment:
+        DB_HOST: "localhost"
+        DB_NAME: "jokedb"
+        DB_USER: "joke_user"
+        DB_PASS: "joke_secret_pass"
 
     - name: Wait for startup (10 seconds)
       pause:
@@ -103,6 +108,13 @@
         curl http://localhost:8000/jokes > /tmp/final_jokes_list.json
       args:
         chdir: /vagrant_data
+      when: health_check is success
+
+    - name: Fetch Final Proof of Work file
+      ansible.builtin.fetch:
+        src: /tmp/final_jokes_list.json
+        dest: /tmp/
+        flat: yes # This keeps the local path clean (e.g., /tmp/final_jokes_list.json)
       when: health_check is success
 
     - name: Print Final Proof of Work
