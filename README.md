@@ -20,8 +20,30 @@
 
   * `pytest -v`
 
-
 ## IaC: Vagrant & Ansible
 
+* From the directory `iac/`
+* Command: `vagrant up --provider=virtualbox`
 
 ## Kubernetes (Minikube)
+
+### Docker image commands
+
+* `docker build -t carlosjesuscaro/jokes-api:v1 .`
+* `docker login`
+* `docker push carlosjesuscaro/jokes-api:v1`
+* Project image in DockerHub: [https://hub.docker.com/r/carlosjesuscaro/jokes-api/](https://hub.docker.com/r/carlosjesuscaro/jokes-api/tags)
+
+### Kubernetes commands
+
+* `minikube start`
+* `eval $(minikube docker-env)`
+* `kubectl apply -f k8s/db-manifest.yaml`
+* `kubectl wait --for=condition=ready pod -l app=mariadb --timeout=120s`
+* `kubectl apply -f k8s/app-manifest.yaml`
+* `kubectl rollout restart deployment jokes-api-deployment`
+* `kubectl wait --for=condition=ready deployment/jokes-api-deployment --timeout=120s`
+* `kubectl get all`
+* `APP_URL=$(minikube service jokes-api-service --url)`
+* `curl -X POST "$APP_URL/jokes/collect?count=3"`
+* `curl "$APP_URL/jokes"`

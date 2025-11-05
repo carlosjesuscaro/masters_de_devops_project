@@ -1,0 +1,72 @@
+# k8s/db-manifest.yaml
+# Manages the Database: PVC, Deployment, and Service
+
+# 1. Persistent Volume Claim (PVC)
+# Reserves storage space for the database data.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mariadb-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+# 2. Database Deployment (MariaDB)
+# Deploys a single instance of the database container.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mariadb-deployment
+  labels:
+    app: mariadb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mariadb
+  template:
+    metadata:
+      labels:
+        app: mariadb
+    spec:
+      containers:
+      - name: mariadb
+        image: mariadb:10.5
+        env:
+        # These are the credentials used by the database to configure itself on first startup
+        - name: MARIADB_ROOT_PASSWORD
+          value: "root_secret_pass"
+        - name: MARIADB_DATABASE
+          value: "jokedb"
+        - name: MARIADB_USER
+          value: "joke_user"
+        - name: MARIADB_PASSWORD
+          value: "joke_secret_pass"
+        ports:
+        - containerPort: 3306
+        volumeMounts:
+        - name: mariadb-storage
+          mountPath: /var/lib/mysql # The path where MariaDB stores data
+      volumes:
+      - name: mariadb-storage
+        persistentVolumeClaim:
+          claimName: mariadb-pvc
+
+---
+# 3. Database Service (Internal DNS Name: mariadb-service)
+# Provides a stable internal network name for the application to connect to.
+apiVersion: v1
+kind: Service
+metadata:
+  name: mariadb-service
+spec:
+  selector:
+    app: mariadb
+  ports:
+    - protocol: TCP
+      port: 3306 # Kubernetes Service port
+      targetPort: 3306 # Container port

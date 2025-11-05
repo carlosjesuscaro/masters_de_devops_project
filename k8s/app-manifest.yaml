@@ -1,0 +1,68 @@
+# k8s/app-manifest.yaml
+# Manages the Application: Deployment and Service
+
+# 1. Application Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jokes-api-deployment
+  labels:
+    app: jokes-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: jokes-api
+  template:
+    metadata:
+      labels:
+        app: jokes-api
+    spec:
+      containers:
+      - name: jokes-api
+        image: carlosjesuscaro/jokes-api:v3
+        ports:
+        - containerPort: 8000
+        # Application Environment Variables
+        env:
+        - name: DB_HOST
+          value: "mariadb-service"
+        - name: JOKE_API_URL
+          value: "https://v2.jokeapi.dev/joke/Any?format=json&safe-mode"
+        - name: DB_NAME
+          value: "jokedb"
+        - name: DB_USER
+          value: "joke_user"
+        - name: DB_PASS
+          value: "joke_secret_pass"
+
+        # Liveness Probe: Checks if the container needs to be restarted
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 15
+          timeoutSeconds: 5
+
+        # Readiness Probe: Checks if the container is ready to receive traffic
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+
+---
+# 2. Application Service (External Exposure via Minikube)
+apiVersion: v1
+kind: Service
+metadata:
+  name: jokes-api-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: jokes-api
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000
