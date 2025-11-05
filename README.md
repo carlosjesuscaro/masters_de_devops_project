@@ -14,16 +14,18 @@
 
   * [Browser - Main Page] - http://localhost:8000/
   * [Browser - Checking application health] - http://localhost:8000/health
-  * [Terminal] - Pulling jokes from https://official-joke-api.appspot.com/random_joke by using the application `curl -X POST "http://localhost:8000/jokes/collect?count=5"`
-  * [Terminal] - Pulling jokes that have been stored in the database `curl -X GET http://localhost:8000/jokes | jq`
+  * [Terminal] - Pulling jokes from https://official-joke-api.appspot.com/random_joke by using the application `curl -X POST "http://localhost:8000/jokes/collect?count=5"`. ![Screenshot](images/local_collecting_from_api.png)
+  * [Terminal] - Pulling jokes that have been stored in the database `curl -X GET http://localhost:8000/jokes | jq`. ![Screenshot](images/local_collecting_from_db.png)
 * Running the test from `./jokes_api/src/tests/`
 
   * `pytest -v`
+  * Github actions ![screenshot](images/github_actions.png)
 
 ## IaC: Vagrant & Ansible
 
 * From the directory `iac/`
 * Command: `vagrant up --provider=virtualbox`
+* ![Screenshot](images/iac_playbook_completed.png)
 
 ## Kubernetes (Minikube)
 
@@ -33,6 +35,7 @@
 * `docker login`
 * `docker push carlosjesuscaro/jokes-api:v1`
 * Project image in DockerHub: [https://hub.docker.com/r/carlosjesuscaro/jokes-api/](https://hub.docker.com/r/carlosjesuscaro/jokes-api/tags)
+* ![Screenshot](images/docker_hub.png)
 
 ### Kubernetes commands
 
@@ -45,5 +48,7 @@
 * `kubectl wait --for=condition=ready deployment/jokes-api-deployment --timeout=120s`
 * `kubectl get all`
 * `APP_URL=$(minikube service jokes-api-service --url)`
-* `curl -X POST "$APP_URL/jokes/collect?count=3"`
-* `curl "$APP_URL/jokes"`
+* `curl -X POST "$APP_URL/jokes/collect?count=3"`. 
+  ![Screenshot](images/k8s_collecting_from_api.png)
+* `curl "$APP_URL/jokes"`. 
+  ![Screenshot](images/k8s_collecting_from_db.png)
