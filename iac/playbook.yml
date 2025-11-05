@@ -6,9 +6,6 @@
   gather_facts: false
 
   tasks:
-
-    # --- SETUP FILE STRUCTURE ---
-
     - name: Ensure app directory exists and is owned by vagrant
       file:
         path: /vagrant_data/jokes_api/src
@@ -18,7 +15,6 @@
         mode: '0755'
       become: false
 
-    # --- INSTALL SOFTWARE ---
     - name: Update apt cache
       apt:
         update_cache: yes
@@ -26,7 +22,6 @@
     # Installing Python, PIP and MySQL
     - name: Install Python 3, pip, and MySQL Server
       apt:
-        # We ensure core components are installed globally
         name: [python3, python3-pip, mysql-server]
         state: present
       become: true
@@ -58,7 +53,6 @@
 
     # Running the application
     - name: Run the application and capture logs
-        # Final Fix: Running as root and using the final path settings.
       shell: | 
         export PATH=$PATH:$HOME/.local/bin
         export PYTHONPATH=$PYTHONPATH:/vagrant_data
@@ -114,7 +108,7 @@
       ansible.builtin.fetch:
         src: /tmp/final_jokes_list.json
         dest: /tmp/
-        flat: yes # This keeps the local path clean (e.g., /tmp/final_jokes_list.json)
+        flat: yes
       when: health_check is success
 
     - name: Print Final Proof of Work

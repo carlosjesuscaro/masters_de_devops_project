@@ -1,0 +1,22 @@
+# .dockerignore
+
+# Ignoring Git
+.git
+.gitignore
+
+# Ignoring local development/testing files
+__pycache__
+*.pyc
+.pytest_cache/
+
+# Ignoring Infrastructure as Code files
+iac/
+.env
+
+# Ignoring Vagrant/VM artifacts
+.vagrant/
+Vagrantfile
+
+# Ignoring others
+*.log
+README.md
